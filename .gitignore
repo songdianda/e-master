@@ -10,8 +10,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Streamlit 运行时
-.streamlit/secrets.toml
+# 原始文章数据（体积大，仅本地保留）
+raw_articles/
 
 # WorkBuddy 本地记忆（包含历史对话数据）
 .workbuddy/

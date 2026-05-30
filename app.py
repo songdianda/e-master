@@ -41,11 +41,37 @@ DATA_FILE = BASE_DIR / "processed_articles.json"
 CONFIG_FILE = BASE_DIR / ".rag_config.json"
 
 # ──────────────────────────────────────────────────────────────
-# 配置持久化
+# 配置加载优先级：st.secrets > 本地持久化 > 硬编码默认值
 # ──────────────────────────────────────────────────────────────
 
+def load_secrets() -> dict:
+    """从 st.secrets 加载云部署配置（兼容本地 .streamlit/secrets.toml）。"""
+    secrets = {}
+    try:
+        secrets["api_key"] = st.secrets.get("api_key", "")
+        secrets["base_url"] = st.secrets.get("base_url", "")
+        secrets["model_name"] = st.secrets.get("model_name", "")
+        secrets["provider"] = st.secrets.get("provider", "")
+    except Exception:
+        pass
+    return {k: v for k, v in secrets.items() if v}  # 过滤空值
+
+
+def merge_config() -> dict:
+    """按优先级合并：secrets > 本地文件 > 默认值，返回最终配置。"""
+    cloud = load_secrets()
+    local = load_config()
+
+    return {
+        "provider": cloud.get("provider") or local.get("provider") or DEFAULT_PROVIDER,
+        "api_key": cloud.get("api_key") or local.get("api_key") or "",
+        "base_url": cloud.get("base_url") or local.get("base_url") or DEFAULT_BASE_URL,
+        "model_name": cloud.get("model_name") or local.get("model_name") or DEFAULT_MODEL,
+    }
+
+
 def load_config() -> dict:
-    """从本地加载持久化配置。"""
+    """从本地加载持久化配置（.rag_config.json）。"""
     if CONFIG_FILE.exists():
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -372,17 +398,19 @@ def load_articles():
 
 def render_sidebar(articles, cat_counts):
     """渲染左侧边栏。"""
-    # ── 加载持久化配置 ──
-    saved = load_config()
-    saved_provider = saved.get("provider", DEFAULT_PROVIDER)
-    saved_api_key = saved.get("api_key", "")
-    saved_base_url = saved.get("base_url", "")
-    saved_model = saved.get("model_name", "")
+    # ── 加载配置（优先级：st.secrets > 本地持久化 > 默认值）──
+    merged = merge_config()
+    saved_provider = merged["provider"]
+    saved_api_key = merged["api_key"]
+    saved_base_url = merged["base_url"]
+    saved_model = merged["model_name"]
 
-    # 初始化 session state（首次加载时从持久化配置恢复）
+    # 初始化 session state（首次加载时恢复所有字段）
     if "init_loaded" not in st.session_state:
         st.session_state["api_key_input"] = saved_api_key
-        st.session_state["base_url_input"] = saved_base_url or API_PROVIDERS.get(saved_provider, {}).get("base_url", DEFAULT_BASE_URL)
+        st.session_state["base_url_input"] = saved_base_url or API_PROVIDERS.get(
+            saved_provider, {}
+        ).get("base_url", DEFAULT_BASE_URL)
         st.session_state["provider_select"] = saved_provider
         st.session_state["init_loaded"] = True
 
