@@ -45,16 +45,29 @@ CONFIG_FILE = BASE_DIR / ".rag_config.json"
 # ──────────────────────────────────────────────────────────────
 
 def load_secrets() -> dict:
-    """从 st.secrets 加载云部署配置（兼容本地 .streamlit/secrets.toml）。"""
+    """从 st.secrets 加载云部署配置（兼容本地 .streamlit/secrets.toml）。
+    支持多种命名规范：DEEPSEEK_API_KEY / api_key / API_KEY 等。"""
     secrets = {}
+
+    def _get(*keys):
+        """按优先级尝试多个键名，返回第一个非空值。"""
+        for k in keys:
+            try:
+                v = st.secrets.get(k, "")
+            except Exception:
+                continue
+            if v:
+                return v
+        return ""
+
     try:
-        secrets["api_key"] = st.secrets.get("api_key", "")
-        secrets["base_url"] = st.secrets.get("base_url", "")
-        secrets["model_name"] = st.secrets.get("model_name", "")
-        secrets["provider"] = st.secrets.get("provider", "")
+        secrets["api_key"] = _get("DEEPSEEK_API_KEY", "API_KEY", "api_key")
+        secrets["base_url"] = _get("DEEPSEEK_BASE_URL", "BASE_URL", "base_url")
+        secrets["model_name"] = _get("MODEL_NAME", "model_name")
+        secrets["provider"] = _get("PROVIDER", "provider")
     except Exception:
         pass
-    return {k: v for k, v in secrets.items() if v}  # 过滤空值
+    return {k: v for k, v in secrets.items() if v}
 
 
 def merge_config() -> dict:
