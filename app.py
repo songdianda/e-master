@@ -430,87 +430,111 @@ def render_sidebar(articles, cat_counts):
     provider_keys = list(API_PROVIDERS.keys())
     saved_index = provider_keys.index(saved_provider) if saved_provider in provider_keys else provider_keys.index(DEFAULT_PROVIDER)
 
+    # 判断是否云端已配密钥（st.secrets 中有有效 API Key）
+    cloud_configured = bool(saved_api_key)
+
     with st.sidebar:
         st.markdown("---")
 
-        # ── WorkBuddy 配置卡片 ──
-        st.markdown(
-            """
-            <div style="
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border-radius: 12px;
-                padding: 16px;
-                margin-bottom: 16px;
-                color: white;
-            ">
-                <h3 style="margin:0 0 4px 0;font-size:16px;">🚀 WorkBuddy 专属配置</h3>
-                <p style="margin:0;font-size:12px;opacity:0.85;">连接你的推理引擎</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # ── 提供商选择 ──
-        provider = st.selectbox(
-            "🤖 API 提供商",
-            options=provider_keys,
-            index=saved_index,
-            key="provider_select",
-            help="选择你的 API 服务商，配置自动持久化保存",
-        )
-        provider_info = API_PROVIDERS[provider]
-
-        # 自定义时才显示完整输入，预设模式自动填充
-        if provider == "🔧 自定义":
-            api_key = st.text_input(
-                "🔑 API Key",
-                type="password",
-                placeholder="sk-...",
-                key="api_key_input",
+        if cloud_configured:
+            # ── 云端模式：密钥已配置，仅显示状态 ──
+            st.markdown(
+                """
+                <div style="
+                    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+                    border-radius: 12px;
+                    padding: 14px;
+                    margin-bottom: 12px;
+                    color: white;
+                ">
+                    <h3 style="margin:0;font-size:15px;">🔐 云端密钥已就绪</h3>
+                    <p style="margin:4px 0 0 0;font-size:11px;opacity:0.9;">API Key 由 Streamlit Secrets 安全托管，访客不可见</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
-            base_url = st.text_input(
-                "🌐 Base URL",
-                value=saved_base_url if not provider_info["base_url"] else provider_info["base_url"],
-                placeholder="https://api.xxx.com/v1",
-                key="base_url_input",
-            )
-            model_name = saved_model
+            provider = saved_provider if saved_provider in provider_keys else DEFAULT_PROVIDER
+            provider_info = API_PROVIDERS[provider]
+            api_key = saved_api_key
+            base_url = saved_base_url or provider_info["base_url"]
+            model_name = saved_model or provider_info["model"]
         else:
-            api_key = st.text_input(
-                "🔑 API Key",
-                type="password",
-                placeholder="sk-...",
-                key="api_key_input",
+            # ── 本地模式：显示完整配置区域 ──
+            st.markdown(
+                """
+                <div style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 16px;
+                    color: white;
+                ">
+                    <h3 style="margin:0 0 4px 0;font-size:16px;">🚀 工作台配置</h3>
+                    <p style="margin:0;font-size:12px;opacity:0.85;">连接你的推理引擎</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
-            base_url = st.text_input(
-                "🌐 Base URL（自动填充）",
-                value=provider_info["base_url"],
-                key="base_url_input",
+
+            provider = st.selectbox(
+                "🤖 API 提供商",
+                options=provider_keys,
+                index=saved_index,
+                key="provider_select",
+                help="选择你的 API 服务商，配置自动持久化保存",
             )
-            model_name = provider_info["model"]
+            provider_info = API_PROVIDERS[provider]
 
-        # ── 自动持久化：检测变化即保存 ──
-        current_config = {
-            "provider": provider,
-            "api_key": api_key,
-            "base_url": base_url,
-            "model_name": model_name,
-        }
-        if current_config != merged:
-            save_config(current_config)
-
-        # 连接测试
-        if st.button("🔍 测试连接", use_container_width=True):
-            if not api_key:
-                st.warning("请先填入 API Key")
+            if provider == "🔧 自定义":
+                api_key = st.text_input(
+                    "🔑 API Key",
+                    type="password",
+                    placeholder="sk-...",
+                    key="api_key_input",
+                )
+                base_url = st.text_input(
+                    "🌐 Base URL",
+                    value=saved_base_url if not provider_info["base_url"] else provider_info["base_url"],
+                    placeholder="https://api.xxx.com/v1",
+                    key="base_url_input",
+                )
+                model_name = saved_model
             else:
-                try:
-                    from openai import OpenAI
-                    client = OpenAI(api_key=api_key, base_url=base_url)
-                    client.models.list()
-                    st.success("✅ 连接成功！API 可达")
-                except Exception as e:
-                    st.error(f"❌ 连接失败: {str(e)[:200]}")
+                api_key = st.text_input(
+                    "🔑 API Key",
+                    type="password",
+                    placeholder="sk-...",
+                    key="api_key_input",
+                )
+                base_url = st.text_input(
+                    "🌐 Base URL（自动填充）",
+                    value=provider_info["base_url"],
+                    key="base_url_input",
+                )
+                model_name = provider_info["model"]
+
+            # ── 本地持久化：检测变化即保存 ──
+            current_config = {
+                "provider": provider,
+                "api_key": api_key,
+                "base_url": base_url,
+                "model_name": model_name,
+            }
+            if current_config != merged:
+                save_config(current_config)
+
+            # 连接测试
+            if st.button("🔍 测试连接", use_container_width=True):
+                if not api_key:
+                    st.warning("请先填入 API Key")
+                else:
+                    try:
+                        from openai import OpenAI
+                        client = OpenAI(api_key=api_key, base_url=base_url)
+                        client.models.list()
+                        st.success("✅ 连接成功！API 可达")
+                    except Exception as e:
+                        st.error(f"❌ 连接失败: {str(e)[:200]}")
 
         st.markdown("---")
 
