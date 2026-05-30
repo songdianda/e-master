@@ -1,0 +1,17 @@
+# API 密钥（绝对不能提交）
+.rag_config.json
+
+# Python 虚拟环境
+.venv/
+__pycache__/
+*.pyc
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Streamlit 运行时
+.streamlit/secrets.toml
+
+# WorkBuddy 本地记忆（包含历史对话数据）
+.workbuddy/
