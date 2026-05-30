@@ -483,7 +483,7 @@ def render_sidebar(articles, cat_counts):
             "base_url": base_url,
             "model_name": model_name,
         }
-        if current_config != saved:
+        if current_config != merged:
             save_config(current_config)
 
         # 连接测试

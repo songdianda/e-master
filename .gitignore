@@ -1,5 +1,11 @@
-# API 密钥（绝对不能提交）
+# 本地私密与临时文件
 .rag_config.json
+.rag_config_backup.json
+.streamlit/secrets.toml
+
+# 数据清洗工具（仅本地使用）
+clean_data.py
+文章资产总台账.csv
 
 # Python 虚拟环境
 .venv/
@@ -10,8 +16,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# 原始文章数据（体积大，仅本地保留）
+# 原始文章数据
 raw_articles/
 
-# WorkBuddy 本地记忆（包含历史对话数据）
+# WorkBuddy 本地记忆
 .workbuddy/
